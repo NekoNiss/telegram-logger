@@ -8,7 +8,7 @@ API_HASH = "eea91e3c3b0381b36d455383fe5b9989"  # ← вставь свой
 BOT_TOKEN = "8695827916:AAENIQTjiIaorme2RJwdppGLn1_85rjXzkY"
 CHAT_ID = "7649175732"
 
-SERVER_URL = "telegram-logger-production-2ca8.up.railway.app"
+SERVER_URL = "gleaming-truth-production-ed48.up.railway.app"
 
 clients = {}
 
