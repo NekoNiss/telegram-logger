@@ -1,8 +1,4 @@
-telethon
-flask
-requests
-aiohttp
-pillow
 fastapi
 uvicorn
-python-multipart
+aiohttp
+telethon
