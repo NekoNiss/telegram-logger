@@ -1,4 +1,10 @@
 import os
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+SESSIONS_DIR = os.path.join(BASE_DIR, "sessions")
+
+# 💥 ВАЖНО — ДО ВСЕГО
+os.makedirs(SESSIONS_DIR, exist_ok=True)
 import asyncio
 from telethon import TelegramClient
 
@@ -34,7 +40,12 @@ async def watch_sessions():
         try:
             os.makedirs(SESSIONS_DIR, exist_ok=True)
 
-            for file in os.listdir(SESSIONS_DIR):
+            if not os.path.exists(SESSIONS_DIR):
+    os.makedirs(SESSIONS_DIR)
+
+files = os.listdir(SESSIONS_DIR)
+
+for file in files:
                 if file.endswith(".session"):
                     name = file.replace(".session", "")
 
