@@ -1,4 +1,10 @@
 import os
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+SESSIONS_DIR = os.path.join(BASE_DIR, "sessions")
+
+if not os.path.exists(SESSIONS_DIR):
+    os.makedirs(SESSIONS_DIR)
 import asyncio
 from datetime import datetime
 import requests
@@ -9,7 +15,6 @@ api_id = 30074866
 api_hash = "eea91e3c3b0381b36d455383fe5b9989
 BOT_TOKEN = "7649175732:AAEiyZNWIgEdgx3i4f4Bsik_9p9JgEZayS4"
 
-SESSIONS_DIR = "server/sessions"
 
 # 💥 фикс: создаём папку если нет
 if not os.path.exists(SESSIONS_DIR):
