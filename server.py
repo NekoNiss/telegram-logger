@@ -1,16 +1,22 @@
-from flask import Flask, request, jsonify
+from fastapi import FastAPI, UploadFile, File
+import os
 
-app = Flask(__name__)
+app = FastAPI()
 
-sessions = []
+SESSIONS_DIR = "sessions"
+os.makedirs(SESSIONS_DIR, exist_ok=True)
 
-@app.route("/add", methods=["POST"])
-def add():
-    sessions.append(request.json)
-    return {"ok": True}
 
-@app.route("/sessions")
+@app.post("/upload")
+async def upload(file: UploadFile = File(...)):
+    path = os.path.join(SESSIONS_DIR, file.filename)
+
+    with open(path, "wb") as f:
+        f.write(await file.read())
+
+    return {"status": "ok"}
+
+
+@app.get("/sessions")
 def get_sessions():
-    return jsonify(sessions)
-
-app.run(host="0.0.0.0", port=3000)
+    return os.listdir(SESSIONS_DIR)
