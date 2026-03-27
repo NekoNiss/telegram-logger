@@ -3,3 +3,6 @@ flask
 requests
 aiohttp
 pillow
+fastapi
+uvicorn
+python-multipart
