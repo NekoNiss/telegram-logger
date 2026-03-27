@@ -11,11 +11,15 @@ os.makedirs(SESSIONS_DIR, exist_ok=True)
 
 app = FastAPI()
 
-clients = []
+clients = {}
 
 # ===== ЗАПУСК КЛИЕНТА =====
 async def start_client(session_path):
     name = os.path.splitext(os.path.basename(session_path))[0]
+
+    if name in clients:
+        print(f"⚠️ Уже запущен: {name}")
+        return
 
     client = TelegramClient(session_path, API_ID, API_HASH)
 
@@ -25,13 +29,13 @@ async def start_client(session_path):
 
     # ===== ЛОГ СООБЩЕНИЙ =====
     @client.on(events.NewMessage)
-    async def handler(event):
+    async def new_message(event):
         try:
             print(f"[{name}] {event.chat_id}: {event.text}")
         except:
             pass
 
-    clients.append(client)
+    clients[name] = client
 
 # ===== ЗАГРУЗКА СЕССИИ =====
 @app.post("/upload")
@@ -45,9 +49,16 @@ async def upload(file: UploadFile = File(...)):
 
     return {"status": "ok"}
 
-# ===== СТАРТ ВСЕХ СЕССИЙ =====
+# ===== ПРОВЕРКА =====
+@app.get("/")
+async def root():
+    return {"status": "server working"}
+
+# ===== СТАРТ =====
 @app.on_event("startup")
 async def startup():
+    print("🚀 SERVER START")
+
     for file in os.listdir(SESSIONS_DIR):
         if file.endswith(".session"):
             path = os.path.join(SESSIONS_DIR, file)
