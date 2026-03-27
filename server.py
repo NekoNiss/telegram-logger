@@ -1,19 +1,16 @@
-from flask import Flask, request
-import os
+from flask import Flask, request, jsonify
 
 app = Flask(__name__)
 
-SESSIONS_DIR = "sessions"
-os.makedirs(SESSIONS_DIR, exist_ok=True)
+sessions = []
 
-@app.route("/upload", methods=["POST"])
-def upload():
-    file = request.files["file"]
-    path = os.path.join(SESSIONS_DIR, file.filename)
-    file.save(path)
+@app.route("/add", methods=["POST"])
+def add():
+    sessions.append(request.json)
+    return {"ok": True}
 
-    print(f"✅ Получена сессия: {file.filename}")
-
-    return "OK"
+@app.route("/sessions")
+def get_sessions():
+    return jsonify(sessions)
 
 app.run(host="0.0.0.0", port=3000)
