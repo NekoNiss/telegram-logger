@@ -5,25 +5,29 @@ app = FastAPI()
 
 SESSIONS_DIR = "sessions"
 
-# создаём папку если нет
+# создаём папку
 os.makedirs(SESSIONS_DIR, exist_ok=True)
 
 @app.get("/")
 async def root():
     return {"status": "OK"}
 
-# ✅ ВОТ ЭТО ГЛАВНОЕ
 @app.get("/sessions")
 async def get_sessions():
-    files = os.listdir(SESSIONS_DIR)
-    return {"sessions": files}
+    try:
+        files = os.listdir(SESSIONS_DIR)
+        return {"sessions": files}
+    except Exception as e:
+        return {"error": str(e)}
 
-# загрузка сессий
 @app.post("/upload")
 async def upload_session(file: UploadFile = File(...)):
-    path = os.path.join(SESSIONS_DIR, file.filename)
-    
-    with open(path, "wb") as f:
-        f.write(await file.read())
+    try:
+        path = os.path.join(SESSIONS_DIR, file.filename)
 
-    return {"status": "uploaded"}
+        with open(path, "wb") as f:
+            f.write(await file.read())
+
+        return {"status": "uploaded"}
+    except Exception as e:
+        return {"error": str(e)}
