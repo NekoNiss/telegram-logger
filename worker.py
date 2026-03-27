@@ -13,8 +13,13 @@ async def get_sessions():
     async with aiohttp.ClientSession() as session:
         async with session.get(f"{SERVER_URL}/sessions") as resp:
             data = await resp.json()
-            return data["sessions"]
 
+            if "sessions" not in data:
+                print("❌ Invalid response:", data)
+                return []
+
+            return data["sessions"]
+            
 async def send_log(data):
     async with aiohttp.ClientSession() as session:
         await session.post(f"{SERVER_URL}/log", json=data)
