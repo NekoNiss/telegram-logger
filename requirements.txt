@@ -1,5 +1,6 @@
 fastapi
 uvicorn
-aiohttp
-telethon
 python-multipart
+telethon
+requests
+PyQt5
